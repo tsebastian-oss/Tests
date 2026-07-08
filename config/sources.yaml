@@ -4,7 +4,7 @@ chileautos:
   sitemap_url: "https://chileautos.cl/sitemaps/chileautos/stock-listings.xml"
   robots_url: "https://www.chileautos.cl/robots.txt"
   user_agent: "AutoPriceRadarBot/0.1 (+contact: owner)"
-  max_listings_per_run: 100
-  delay_seconds: 2.0
-  timeout_seconds: 25
+  max_listings_per_run: 1500
+  delay_seconds: 0.5
+  timeout_seconds: 10
   respect_robots_txt: true
