@@ -1,3 +1,35 @@
+default_source: bruno_fritsch
+
+bruno_fritsch:
+  source: bruno_fritsch
+  base_url: "https://www.brunofritsch.cl"
+  user_agent: "AutoPriceRadarBot/0.2 (+contact: owner)"
+  max_listings_per_run: 5000
+  max_pages_per_run: 8000
+  delay_seconds: 0.5
+  timeout_seconds: 10
+  respect_robots_txt: true
+  sitemap_urls:
+    - "https://www.brunofritsch.cl/sitemap.xml"
+    - "https://brunofritsch.cl/sitemap.xml"
+    - "https://www.brunofritsch.cl/sitemap_index.xml"
+    - "https://www.brunofritsch.cl/sitemap-index.xml"
+  seed_urls:
+    - "https://www.brunofritsch.cl/"
+    - "https://www.brunofritsch.cl/autos"
+    - "https://www.brunofritsch.cl/autos-nuevos"
+    - "https://www.brunofritsch.cl/autos-usados"
+    - "https://www.brunofritsch.cl/vehiculos"
+    - "https://www.brunofritsch.cl/vehiculos-nuevos"
+    - "https://www.brunofritsch.cl/vehiculos-usados"
+    - "https://www.brunofritsch.cl/nuevos"
+    - "https://www.brunofritsch.cl/usados"
+    - "https://www.brunofritsch.cl/seminuevos"
+    - "https://www.brunofritsch.cl/stock"
+    - "https://www.brunofritsch.cl/catalogo"
+    - "https://www.brunofritsch.cl/modelos"
+    - "https://www.brunofritsch.cl/marcas"
+
 chileautos:
   source: chileautos
   base_url: "https://www.chileautos.cl"
