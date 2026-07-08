@@ -1,18 +1,24 @@
-# Auto Price Radar
+# Bruno Fritsch Price Radar
 
-MVP para monitorear autos usados publicados en Chileautos y guardar solo:
+MVP para monitorear precios publicados en Bruno Fritsch Chile y guardar una base de autos/versiones con:
 
 - marca
 - modelo
 - versión
 - año
-- precio de venta
+- precio publicado
 - URL
 - fecha de captura
 
-La primera versión usa el sitemap público de stock listings como punto de entrada, aplica rate limit, guarda en SQLite y exporta CSV/Excel.
+El scraper usa una estrategia de descubrimiento responsable:
 
-> Importante: usa esto de forma responsable. No evade captchas, no usa proxies rotativos, no simula usuarios para saltarse bloqueos y permite respetar `robots.txt`.
+1. intenta leer sitemaps públicos;
+2. prueba páginas candidatas de catálogo, stock, autos nuevos y usados;
+3. recorre links internos relacionados a autos/versiones;
+4. extrae datos desde JSON embebido, metatags y texto visible;
+5. guarda resultados en SQLite y exporta CSV/Excel.
+
+> Importante: usa esto de forma responsable. No evade captchas, no usa proxies rotativos y no simula usuarios para saltarse bloqueos. Si el sitio responde 403/429, el scraper reduce velocidad con backoff.
 
 ## Instalación
 
@@ -24,18 +30,18 @@ source .venv/bin/activate   # Mac/Linux
 pip install -r requirements.txt
 ```
 
-## Correr scraper
+## Correr scraper Bruno Fritsch
 
 ```bash
-python -m scraper.run --max-listings 100
+python -m scraper.run --source bruno_fritsch --max-listings 5000 --delay 0.5 --timeout 10
 ```
 
 Opciones útiles:
 
 ```bash
-python -m scraper.run --max-listings 50 --delay 2.0
-python -m scraper.run --sitemap https://chileautos.cl/sitemaps/chileautos/stock-listings.xml
-python -m scraper.run --no-robots-check
+python -m scraper.run --source bruno_fritsch --max-listings 1000
+python -m scraper.run --source bruno_fritsch --max-listings 5000 --delay 1.0
+python -m scraper.run --source bruno_fritsch --no-robots-check
 ```
 
 ## Correr dashboard
@@ -48,20 +54,26 @@ streamlit run dashboard/app.py
 
 ```text
 data/autos.db
-exports/chileautos_listings_latest.csv
-exports/chileautos_listings_latest.xlsx
+exports/bruno_fritsch_listings_latest.csv
+exports/bruno_fritsch_listings_latest.xlsx
 ```
 
 ## GitHub Actions
 
-El workflow corre 2 veces al día:
+El workflow corre 2 veces por semana:
 
 ```yaml
-cron: "0 0,12 * * *"
+cron: "0 12 * * 1,4"
 ```
 
-Esto equivale aproximadamente a mañana y noche en Chile, dependiendo de horario de verano/invierno.
-También puede ejecutarse manualmente desde `workflow_dispatch`.
+Esto equivale aproximadamente a lunes y jueves en la mañana de Chile.
+También puede ejecutarse manualmente desde `workflow_dispatch` con:
+
+```text
+max_listings: 5000
+delay_seconds: 0.5
+timeout_seconds: 10
+```
 
 ## Modelo de datos
 
@@ -80,3 +92,7 @@ captured_at TEXT
 ```
 
 Se usa `UNIQUE(url, captured_at)` para permitir histórico por corrida.
+
+## Nota técnica
+
+El sitio puede cambiar rutas, nombres de campos o bloquear tráfico automatizado. Por eso el scraper está armado como crawler de descubrimiento y no depende de una sola URL fija. Si Bruno Fritsch expone un endpoint/API interno estable, el siguiente paso es reemplazar la extracción genérica por un conector específico.
