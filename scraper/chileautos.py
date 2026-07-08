@@ -148,21 +148,30 @@ def parse_listing(html: str, url: str, captured_at: str) -> dict:
     }
 
 
-def robots_allowed(url: str, user_agent: str = DEFAULT_UA, robots_url: str = DEFAULT_ROBOTS) -> bool:
+def build_robots_parser(robots_url: str = DEFAULT_ROBOTS) -> RobotFileParser | None:
+    """Read robots.txt once per run. Avoids fetching it for every listing."""
     parser = RobotFileParser()
     parser.set_url(robots_url)
     try:
         parser.read()
-    except Exception:
+        return parser
+    except Exception as exc:
+        print(f"[robots] could not read robots.txt: {exc}")
+        return None
+
+
+def robots_allowed(url: str, parser: RobotFileParser | None, user_agent: str = DEFAULT_UA) -> bool:
+    if parser is None:
+        # Conservative when robots cannot be read.
         return False
     return parser.can_fetch(user_agent, url)
 
 
 def scrape_chileautos(
     sitemap_url: str = DEFAULT_SITEMAP,
-    max_listings: int = 100,
-    delay_seconds: float = 2.0,
-    timeout_seconds: float = 25,
+    max_listings: int = 1500,
+    delay_seconds: float = 0.5,
+    timeout_seconds: float = 10,
     user_agent: str = DEFAULT_UA,
     respect_robots_txt: bool = True,
 ) -> list[dict]:
@@ -173,32 +182,55 @@ def scrape_chileautos(
         "Accept-Language": "es-CL,es;q=0.9,en;q=0.7",
     }
 
+    robots_parser = build_robots_parser() if respect_robots_txt else None
     items: list[dict] = []
+    started = time.perf_counter()
+
     with httpx.Client(headers=headers, timeout=timeout_seconds, follow_redirects=True) as client:
         urls = fetch_sitemap_urls(sitemap_url, client, limit=max_listings)
+        total = len(urls)
+        print(f"[start] urls={total} max_listings={max_listings} delay={delay_seconds}s timeout={timeout_seconds}s robots={respect_robots_txt}")
 
+        blocked_count = 0
         for i, url in enumerate(urls, start=1):
-            if respect_robots_txt and not robots_allowed(url, user_agent=user_agent):
-                print(f"[skip robots] {url}")
+            t0 = time.perf_counter()
+
+            if respect_robots_txt and not robots_allowed(url, parser=robots_parser, user_agent=user_agent):
+                print(f"[skip robots {i}/{total}] {url}")
                 continue
 
             try:
                 response = client.get(url)
+                elapsed = time.perf_counter() - t0
+
                 if response.status_code in (403, 429):
-                    print(f"[blocked/rate-limited] {response.status_code} {url}")
-                    time.sleep(max(delay_seconds * 4, 10))
+                    blocked_count += 1
+                    backoff = min(max(delay_seconds * 4, 5), 15)
+                    print(f"[blocked/rate-limited {i}/{total}] status={response.status_code} elapsed={elapsed:.2f}s backoff={backoff:.1f}s {url}")
+                    time.sleep(backoff)
                     continue
+
                 response.raise_for_status()
                 item = parse_listing(response.text, url=url, captured_at=captured_at)
 
                 if item.get("brand") or item.get("model") or item.get("sale_price"):
                     items.append(item)
-                    print(f"[ok {i}/{len(urls)}] {item.get('brand')} {item.get('model')} {item.get('year')} {item.get('sale_price')}")
+                    if i == 1 or i % 25 == 0 or i == total:
+                        avg = (time.perf_counter() - started) / max(i, 1)
+                        eta_min = avg * (total - i) / 60
+                        print(
+                            f"[ok {i}/{total}] captured={len(items)} avg={avg:.2f}s/url eta={eta_min:.1f}m "
+                            f"{item.get('brand')} {item.get('model')} {item.get('year')} {item.get('sale_price')}"
+                        )
                 else:
-                    print(f"[no data] {url}")
+                    if i % 25 == 0:
+                        print(f"[no data {i}/{total}] {url}")
             except Exception as exc:
-                print(f"[error] {url}: {exc}")
+                print(f"[error {i}/{total}] {url}: {exc}")
 
-            time.sleep(delay_seconds)
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
 
+    total_elapsed = time.perf_counter() - started
+    print(f"[summary] captured={len(items)} blocked={blocked_count} elapsed={total_elapsed/60:.1f}m")
     return items
