@@ -34,10 +34,21 @@ jobs:
         run: |
           python -m scraper.run --max-listings 100 --delay 2.0
 
+      - name: Show generated files
+        run: |
+          echo "Data directory:"
+          ls -lah data || true
+          echo "Exports directory:"
+          ls -lah exports || true
+
       - name: Commit data
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/autos.db exports/chileautos_listings_latest.csv exports/chileautos_listings_latest.xlsx
-          git diff --cached --quiet || git commit -m "Update Chileautos listings"
-          git push
+          git add data/ exports/
+          if git diff --cached --quiet; then
+            echo "No data changes to commit"
+          else
+            git commit -m "Update Chileautos listings"
+            git push
+          fi
