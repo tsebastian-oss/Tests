@@ -30,14 +30,16 @@ def export_latest(source: str, db_path: Path = DB_PATH) -> None:
         """
         SELECT source, url, brand, model, version, year, sale_price, currency, captured_at
         FROM listings
+        WHERE source = ?
         ORDER BY captured_at DESC, brand, model, year
         """,
         conn,
+        params=(source,),
     )
     conn.close()
 
     if df.empty:
-        print("[export] no rows")
+        print(f"[export] no rows for source={source}")
         return
 
     safe_source = source.replace("-", "_")
@@ -60,6 +62,7 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=None)
     parser.add_argument("--user-agent", default=None)
     parser.add_argument("--no-robots-check", action="store_true")
+    parser.add_argument("--allow-empty", action="store_true", help="Do not fail the run when zero rows are captured")
     args = parser.parse_args()
 
     cfg = all_cfg[args.source]
@@ -96,6 +99,12 @@ def main() -> None:
     inserted = insert_many(items)
     print(f"[done] source={args.source} scraped={len(items)} inserted={inserted}")
     export_latest(args.source)
+
+    if len(items) == 0 and not args.allow_empty:
+        raise SystemExit(
+            "[failed] No data was captured. The source may be blocking robots, routes may be disallowed, "
+            "or the site may require an official feed/API."
+        )
 
 
 if __name__ == "__main__":
