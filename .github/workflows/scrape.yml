@@ -1,4 +1,4 @@
-name: Scraping Chileautos
+name: Scraping Bruno Fritsch
 
 on:
   schedule:
@@ -8,15 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       max_listings:
-        description: "Cantidad máxima de avisos a procesar en esta corrida"
+        description: "Cantidad máxima de autos/versiones a procesar"
         required: false
         default: "5000"
       delay_seconds:
-        description: "Pausa entre avisos. Subir si aparecen 403/429"
+        description: "Pausa entre páginas. Subir si aparecen 403/429"
         required: false
         default: "0.5"
       timeout_seconds:
-        description: "Timeout por aviso"
+        description: "Timeout por página"
         required: false
         default: "10"
 
@@ -48,8 +48,8 @@ jobs:
           DELAY_SECONDS: ${{ github.event.inputs.delay_seconds || '0.5' }}
           TIMEOUT_SECONDS: ${{ github.event.inputs.timeout_seconds || '10' }}
         run: |
-          echo "Running scraper with max_listings=${MAX_LISTINGS}, delay=${DELAY_SECONDS}, timeout=${TIMEOUT_SECONDS}"
-          python -m scraper.run --max-listings "${MAX_LISTINGS}" --delay "${DELAY_SECONDS}" --timeout "${TIMEOUT_SECONDS}"
+          echo "Running Bruno Fritsch scraper with max_listings=${MAX_LISTINGS}, delay=${DELAY_SECONDS}, timeout=${TIMEOUT_SECONDS}"
+          python -m scraper.run --source bruno_fritsch --max-listings "${MAX_LISTINGS}" --delay "${DELAY_SECONDS}" --timeout "${TIMEOUT_SECONDS}"
 
       - name: Show generated files
         run: |
@@ -66,6 +66,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No data changes to commit"
           else
-            git commit -m "Update Chileautos listings"
+            git commit -m "Update Bruno Fritsch listings"
             git push
           fi
