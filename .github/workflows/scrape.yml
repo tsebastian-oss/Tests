@@ -7,6 +7,19 @@ on:
     # 12:00 UTC ~= 08:00 CLT / 09:00 CLST
     - cron: "0 0,12 * * *"
   workflow_dispatch:
+    inputs:
+      max_listings:
+        description: "Cantidad máxima de avisos a procesar en esta corrida"
+        required: false
+        default: "1500"
+      delay_seconds:
+        description: "Pausa entre avisos. Subir si aparecen 403/429"
+        required: false
+        default: "0.5"
+      timeout_seconds:
+        description: "Timeout por aviso"
+        required: false
+        default: "10"
 
 permissions:
   contents: write
@@ -14,7 +27,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -31,8 +44,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run scraper
+        env:
+          MAX_LISTINGS: ${{ github.event.inputs.max_listings || '1500' }}
+          DELAY_SECONDS: ${{ github.event.inputs.delay_seconds || '0.5' }}
+          TIMEOUT_SECONDS: ${{ github.event.inputs.timeout_seconds || '10' }}
         run: |
-          python -m scraper.run --max-listings 100 --delay 2.0
+          echo "Running scraper with max_listings=${MAX_LISTINGS}, delay=${DELAY_SECONDS}, timeout=${TIMEOUT_SECONDS}"
+          python -m scraper.run --max-listings "${MAX_LISTINGS}" --delay "${DELAY_SECONDS}" --timeout "${TIMEOUT_SECONDS}"
 
       - name: Show generated files
         run: |
